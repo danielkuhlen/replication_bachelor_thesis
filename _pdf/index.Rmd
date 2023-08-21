@@ -1,0 +1,110 @@
+---
+################################################################################
+# Required Information --------------------------------------------------------
+################################################################################
+title: "Strategic Emotions: A Sentiment Analysis of the 2021 German Federal Election Campaign on Twitter"
+titlege: "Strategische Emotionen: Eine Sentimentanalyse des Bundestagswahlkampf 2021 auf Twitter"
+type: "Bachelor's Thesis"
+author: "Daniel Kuhlen"
+matriculation_number: "609376"
+date: "`r format(Sys.Date(), '%B %d, %Y')`"
+university: "Humboldt-Universität zu Berlin"
+institute: "Institut für Sozialwissenschaften" 
+chair: "Innenpolitik der Bundesrepublik Deutschland"
+advisor1: "Prof. Dr. Jochen Müller"
+advisor2: "Dr. Bastian Becker"            
+program: "Bachelor of Arts in Sozialwissenschaften"
+################################################################################
+# Optional Information ---------------------------------------------------------
+################################################################################
+abstract: |  
+  `r if(knitr:::is_latex_output()) paste(readLines("prelim/00-abstract.Rmd"), collapse = '\n  ')`
+acknowledge: |  
+  `r if(knitr:::is_latex_output()) paste(readLines("prelim/00-acknowledge.Rmd"), collapse = '\n  ')`
+abbreviations: |  
+  `r if(knitr:::is_latex_output()) paste(readLines("prelim/00-abbreviations.Rmd"), collapse = '\n  ')`
+lot: true                              # list of tables
+lof: true                              # list of figures
+link-citations: true
+bibliography: /Users/danielkuhlen/Desktop/uni/ressourcen/zotero/mylibrary.bib   
+csl: /Users/danielkuhlen/Desktop/uni/ba/03_analysis/american-political-science-association.csl
+################################################################################
+# Rendering Options ------------------------------------------------------------
+################################################################################
+knit: "bookdown::render_book"
+output: 
+  huwiwidown::thesis_pdf  
+space_between_paragraphs: true
+---
+
+```{r packagesindex, include = FALSE}
+# include huwiwidown package ---------------------------------------------------
+if (!require(devtools)) {
+  install.packages("devtools", repos = "http://cran.rstudio.com")
+}
+if (!require(huwiwidown)) {
+  devtools::install_github("phister/huwiwidown")
+  library(huwiwidown)
+}
+
+# other packages ---------------------------------------------------------------
+library(tidyverse)
+library(rio)
+library(knitr)
+library(corrplot)
+library(kableExtra)
+library(grid)
+library(extrafont)
+library(scales)
+library(stargazer)
+library(ggridges)
+```
+
+```{r dataimportindex, include = FALSE, cache=F}
+# global data import -----------------------------------------------------------
+
+# tweets
+tweetstidy <- readRDS("../../02_data/02_output_data/tweets_tidy.rds") %>% 
+  select(tweet_id, sourcetweet_type)
+
+tweets <- readRDS("../../02_data/02_output_data/tweets_sentiment.rds") %>%
+  left_join(tweetstidy, by = "tweet_id") %>%
+  mutate(sourcetweet_type = ifelse(is.na(sourcetweet_type), "normal", sourcetweet_type)) %>%
+  filter(sourcetweet_type != "retweeted") %>%
+  filter(!is.na(gender))
+
+# import twitter accounts
+accounts <- import("../../02_data/02_output_data/pol_twitter_accounts.rds")
+candidates2021_raw <- import("../../02_data/01_raw_data/twitter2021.rds")
+
+# rauh sent dict
+sent.dictionary <- import("../../02_data/01_raw_data/dictionary/1_Dictionaries/Rauh_SentDictionaryGerman.Rdata")
+
+# different datasets for analysis
+
+# weekly
+weekly_sentiment <- import("../../02_data/02_output_data/time_sentiment/weekly_sentiment.rds")
+weekly_sentiment_appendix <- import("../../02_data/02_output_data/time_sentiment/weekly_sentiment_appendix.rds")
+
+# liwc
+liwc <- import("../../02_data/02_output_data/tweets_sentiment_liwc.csv") %>%
+  mutate(tweet_id = as.character(tweet_id)) %>%
+  left_join(tweetstidy, by = "tweet_id") %>%
+  mutate(sourcetweet_type = ifelse(is.na(sourcetweet_type), "normal", sourcetweet_type)) %>%
+  filter(sourcetweet_type != "retweeted") %>%
+  filter(gender %in% c("male", "female"))
+
+# sentimet scores
+sentscores <- liwc %>%
+  select(tweet_id, sentiment.norm, Tone)
+
+# human coders
+humancoding <- import("../../02_data/02_output_data/sample/survey/scoring_daniel.xlsx") %>%
+  mutate(score_johanna = as.numeric(score_johanna),
+         score_johanna = score_johanna / 100) %>%
+  mutate(score_teona = as.numeric(score_teona),
+         score_teona = score_teona / 100) %>%
+  mutate(score_daniel = as.numeric(score_daniel),
+         score_daniel = score_daniel / 100) %>%
+  left_join(sentscores, by = "tweet_id")
+```

@@ -1,0 +1,245 @@
+# Results {#results}
+
+First, I test the proposed hypotheses using OLS regressions and subsequently turn to examining the sentiment patterns over time. The regression results for all tweets before the 2021 election are provided in Table \ref{tab:regone}. Models 1 and 2 examine the link between positive sentiment and incumbency status. Models 3 and 4 include the party and candidate level variables, Models 5 and 6 the control variables.
+\newpage
+```{r regpreelection, echo=FALSE, warning=FALSE, message=FALSE, results='asis'}
+# wrangling --------------------------------------------------------------------
+
+# election day
+election <- as.POSIXct("2021-09-26", format = "%Y-%m-%d")
+
+pre_election <- tweets %>%
+  filter(tweet_date < election) %>%
+  filter(sourcetweet_type != "retweet")
+
+
+pre_election <- pre_election %>%
+  mutate(incumbent = ifelse(party %in% c('CDU', 'CSU', 'SPD'), 1, 0)) %>%
+  mutate(chancellor = ifelse(party %in% c('CDU', 'CSU'), 1, 0)) %>%
+  mutate(prr = ifelse(party %in% c('AfD'), 1, 0)) %>%
+  mutate(binary_position = if_else(binary_federal_parliamentarian +
+                                         binary_state_parliamentarian +
+                                         binary_european_parliamentarian +
+                                         binary_federal_state_secretary +
+                                         binary_state_state_secretary +
+                                         binary_federal_minister +
+                                         binary_state_minister> 0, 1, 0)) %>%
+  mutate(gender = recode(gender, 'male' = 1, 'female' = 2, 'diverse' = 2)) %>%
+  mutate(time_to_election = as.numeric(difftime(election, tweet_date, units = "weeks"))) %>%
+  select(twitter_handle, name, gender, party, incumbent, chancellor,
+         prr, binary_position, listed_candidate, direct_candidate, time_to_election,
+         sentiment.norm, sentiment, negterms, posterms, terms)
+  
+
+# regressions ------------------------------------------------------------------
+
+# estimate models
+model1 <- lm(sentiment.norm ~ incumbent, data = pre_election)
+model2 <- lm(sentiment.norm ~ incumbent + chancellor, data = pre_election)
+model3 <- lm(sentiment.norm ~ incumbent + chancellor + prr, data = pre_election)
+model4 <- lm(sentiment.norm ~ incumbent + chancellor + prr  + gender, data = pre_election)
+model5 <- lm(sentiment.norm ~ incumbent +chancellor + prr  + gender + time_to_election,data = pre_election)
+model6 <- lm(sentiment.norm ~ incumbent +chancellor + prr  + gender + time_to_election + terms,data = pre_election)
+
+# stargazer output
+cat("\\begin{table}[H]
+    \\centering
+    \\caption{OLS Regression: Tweets one Year before the 2021 Election}
+    \\label{tab:regone}")
+stargazer(model1, model2, model3, model4, model5, model6,
+          float = F,
+          header= F,
+          omit.stat = c("ser", "f"),
+          type = "latex",
+          font.size = "scriptsize",
+          covariate.labels = c("Incumbent",
+                               "Incumbent x Chancellor",
+                               "Radical Right",
+                               "Gender (Ref. Female)",
+                               "Weeks to Election",
+                               "Terms"),
+          dep.var.caption = "Dependent Variable: Normalized Sentiment Score",
+          dep.var.labels.include = F,
+          omit.table.layout = "n")
+cat("\\vspace{0.5em} % Add some vertical space between the table and note
+    \\begin{minipage}{0.95\\linewidth}
+    \\scriptsize
+    \\textit{Note}: Standard errors are in parentheses. Significance values are indicated with: $^*$p$<$0.1; $^{**}$p$<$0.05;
+    $^{***}$p$<$0.01. The data includes all tweets posted by candidates prior to the 2021 German federal election (Timeframe:
+    2020/09/26 - 2021/09/26). The Incumbent dummy equals 1 if the candidate is a member of the CDU/CDSU or SPD, 0 if otherwise. The
+    Incumbent x Chancellor dummy equals 1 if the candidate is a member of the CDU/CSU, 0 if otherwise. The Radical Right dummy equals 1 if
+    the candidate is a member of the AfD, 0 if otherwise. The Gender dummy equals 1 if the Candidate is male, 0 if female. 
+    \\end{minipage}
+    \\end{table}")
+```
+\vspace{-.5cm}
+The data suggests that being part of the incumbent party is associated with candidates utilizing a more positive sentiment during campaigns on Twitter. Model 1 indicates a *0.019* increase on the normalized sentiment variable for the candidates of the CDU/CSU and SPD in contrast to those of the opposition parties. The size of this effect decreases with model complexity to *0.008* in Model 6, however remains highly significant across all specifications. Accordingly, the data supports the main hypothesis \ref{hypothesis:H1} that incumbent parties employ a more positive sentiment in campaigns.
+Model 2 introduces an additional layer of granularity with the inclusion of the *Incumbent x Chancellor* dummy, showing a *0.010* increase for the CDU/CSU candidates in contrast to all other parties including the SPD. Once controlling for all covariates, including tweet length and weeks until the election, the effect increases to *0.017*. Accordingly, the model also provides evidence for \ref{hypothesis:H2} that it is mainly the CDU/CSU's candidates that drive the incumbency effect. Adding to this, Model 3 highlights a pronounced negative sentiment associated with radical right parties, consistent with the description of their campaign strategies and rhetoric. The dummy coefficient, presented in Model 3, for the *Radical Right* (AfD) affiliated candidates points to a highly significant decrease of *0.035* in the normalized sentiment variable. This means that, in comparison to all other parties, AfD candidates are more likely to employ a negative sentiment in their Twitter campaigns. Consequentially, the empirical findings support the idea outlined in \ref{hypothesis:H3}.
+Shifting away from the party level effects, Model 4 includes the candidates' gender. This indicates a highly significant positive effect for male candidates with a coefficient of *0.018*. Interestingly, the gender variable does not diminish the incumbency effect, implying that this is independent of a candidate's gender. This observation aligns with \ref{hypothesis:H4} which focuses on gender-based differences in emotive language. Confronted with the stereotype that women are too emotional, the results indicate that female candidates express less emotional language than their male counterparts.
+
+Building upon the regression results, Figure `@ref(fig:plotintrapartydiversity)` shows the intra-party variance on the normalized sentiment variable. For this purpose, the account-level averages are calculated and their distribution within the parties plotted using kernel density estimation. Accordingly, the height of the curves represents the density of accounts with the corresponding average sentiment score. This allows to evaluate whether parties' candidates are uniform in terms of their emotive language strategies.
+\newpage
+```{r plotintrapartydiversity, echo=FALSE, warning=FALSE, message=FALSE, fig.cap="Intra-party Sentiment Diversity", fig.pos="H", fig.align='center', out.width="100%"}
+tweets %>%
+  mutate(party = case_when(
+    party == "LINKE" ~ "LEFT",
+    party == "GRÜNE" ~ "GREEN",
+    TRUE ~ as.character(party))) %>%
+  filter(tweet_date < election) %>% 
+  mutate(party = recode(party,
+                        "CDU" = "CDU/CSU",
+                        "CSU" = "CDU/CSU")) %>%
+  mutate(party = factor(party,
+                        levels = c("AfD", "CDU/CSU", "FDP", "SPD", "GREEN", "LEFT"))) %>%
+  ggplot(aes(x = account_sentiment, y = party, fill = party)) +
+  geom_density_ridges_gradient() +
+  labs(x = "Normalized Sentiment Score",
+       y = "Density") +
+  theme_bw() +
+  scale_fill_manual(values = c("LEFT" = adjustcolor("#BE3075", alpha.f = 0.6),
+                               "GREEN" = adjustcolor("#1AA037", alpha.f = 0.6),
+                               "SPD" = adjustcolor("#E3000F", alpha.f = 0.6),
+                               "FDP" = adjustcolor("#FFEF00", alpha.f = 0.6),
+                               "CDU/CSU" = adjustcolor("#000000", alpha.f = 0.6),
+                               "AfD" = adjustcolor("#0489DB", alpha.f = 0.6))) +
+  theme(axis.text.y=element_blank(),
+        axis.ticks.y=element_blank(),
+        text = element_text(family = "LM Roman 10"),
+        legend.position = "bottom") +
+  guides(fill = guide_legend(nrow = 1, title = NULL)) +
+  xlim(-0.12, 0.2) +
+  scale_y_discrete(expand = expand_scale(mult = c(0.05, .3)))
+```
+
+```{r plotintrapartydiversitynote, echo=FALSE, warning=FALSE, message=FALSE, results='asis'}
+cat("\\vspace{-1cm}
+    \\begin{minipage}{\\linewidth}
+    \\begin{center}
+    \\scriptsize
+    \\textit{Note}: The data distribution is calculated for each party using the Kernel Density Estimation (KDE).
+    \\end{center}
+    \\end{minipage}")
+cat("\\vspace{0.2cm}")
+```
+
+Interestingly, the emotional language of the candidates is quite heterogeneous for all parties. While this seems to vary from party to party, e.g., the representatives of the AfD are more similar in the emotional language they use on Twitter than the very diverse SPD, it appears that there are different factions within all parties that systematically use different emotional language. The data suggest that parties are not uniform actors in terms of their emotive strategies. It may indeed be a strategic decision, especially for the bigger, ideologically diverse parties, to appeal to different voters through differing emotive appeals. Correspondingly, this first glance supports \ref{hypothesis:H5}.  However, this is just a first outlook; a thorough evaluation would require analyses that take intra-party factions, and candidates' mandate type into account, which is beyond the scope of this work.
+
+Having outlined the sentiment employed before the election, the data also allows an evaluation of the parties' post-election emotive strategies, in this specific case even with a change of government. Accordingly, I plot the parties' normalized sentiment scores for the two years surrounding the election in Figure `@ref(fig:plotsentimentweekly)` and conduct the same regression analysis on tweets posted in the year after the election in Table \ref{tab:regtwo} to examine if the presented effects persist.
+
+\newpage
+
+```{r plotsentimentweekly, echo=FALSE, warning=FALSE, message=FALSE, fig.cap="Sentiment over Time", fig.pos="H", fig.align='center', out.width="95%"}
+weekly_sentiment %>%
+  mutate(party = case_when(
+    party == "LINKE" ~ "LEFT",
+    party == "GRÜNE" ~ "GREEN",
+    TRUE ~ as.character(party))) %>%
+  mutate(tweet_week_date = as.Date(tweet_week_date)) %>%
+  mutate(party = recode(party,
+                        "CDU" = "CDU/CSU",
+                        "CSU" = "CDU/CSU")) %>%
+  ggplot(aes(x = tweet_week_date, y = sentiment.norm, color = party)) +
+  geom_point(se=FALSE, size = .1, alpha = .4) +
+  geom_smooth(se=F, span = .6) +
+  geom_vline(xintercept = as.Date("2021-12-08"), linetype="dashed", color = "black") +
+  geom_vline(xintercept = as.Date("2021-09-26"), linetype="dashed", color = "black") +
+  labs(x = "",
+       y = "Normalized Sentiment Score",
+       color = "Party") +
+  scale_color_manual(values = c("LEFT" = "#BE3075",
+                                "GREEN" = "#1AA037",
+                                "SPD" = "#E3000F",
+                                "FDP" = "#FFEF00",
+                                "CDU/CSU" = "#000000",
+                                "AfD" = "#0489DB")) +
+  scale_x_date(expand = c(0,20), 
+               breaks = as.Date(c("2020-09-26", "2021-09-26",
+                                  "2021-12-08", "2022-09-26")),
+               labels = c("2020/09/26", "2021/09/26\n(Election)",
+                        "2021/12/08\n(New Govt.)", "2022/09/26")) +
+  scale_y_continuous(breaks = c(-2, 0, 2, 4),
+                     labels = c("-  2", "0", "2", "4")) +
+  theme_bw() +
+  theme(text = element_text(family = "LM Roman 10"),
+        legend.position = "bottom",
+        legend.margin = margin(-18, 0, 2, 0),
+        axis.title.y = element_text(size = 8)) +
+  guides(color = guide_legend(nrow = 1, title = NULL)) +
+  ylim(-0.03, 0.04) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+The emotive strategy of the CDU/CSU appears to have changed with the election. In line with the results in Table \ref{tab:regone}, in the preceding year, the candidates employed the most positive tone on Twitter with sentiment scores peaking at *0.03* approximately three months before the election day. However, their use of positive sentiment began to steadily decrease immediately after, resulting in a new ranking of the parties along the sentiment score. In line with the theory, after being voted out of office, the CDU/CSU is clearly positioned as an opposition party that expresses more negative sentiment than the parties in government. Their former coalition partner, the SPD, which now leads the new government, demonstrates a contrasting trend: As the party remains in power, its candidates consistently tweet in a positive manner. However, the change from junior to a leading coalition partner does not appear to cause a significant incline in tone. The candidates of the SPD's coalition partners, the Greens & FDP, exhibit a moderately positive sentiment that is fairly consistent over time, ranging from *0.01* to *0.02*. Notably, it does not seem to be an increase in their emotional tone, but rather the decrease in the CDU/CSU affiliated candidates that places them as the second and third most positive party after the election. Being voted out of office, particularly in this specific instance, seems to have a more pronounced effect on the candidates' tone than being voted into office. Those who previously held a mandate or at least believed they had a genuine shot at securing a seat, found themselves without one after the election. Possibly these particular candidates are driving the observed decline in the CDU/CSU's tone. As without a mandate, they might communicate their sentiments and opinions more directly and therefore possibly adopt a more negative language on Twitter.
+
+Besides this, the SPD, FDP, Green and Left party all showed a brief upswing in positive language shortly before the election which peaks about a month before the formation of the new government. All of them, as potential coalition partners, played a role in regard to forming a new government. Therefore, it seems reasonable that in the weeks immediately before and after the election, the parties' candidates did not entirely focus on denouncing the status quo, but rather formulated their plans for the future. While doing so, they might have used a more positive sentiment, since they focused on their agenda and thus aimed to influence voters' perceptions in a positive way. Furthermore, the AfD and the Left, which were neither part of the first nor the later coalition, employ the most negative sentiment throughout the entire period. And unsurprisingly, as a radical right party, the AfD consistently displays the most negative language with none of the democratic parties employing a sentiment more negative than their candidates' at any time.
+
+Finally, Table \ref{tab:regtwo} depicts the regression results for all tweets one year after the 2021 election. Exactly as in Table \ref{tab:regone}, Models 1 and 2 examine the link between sentiment and incumbency status. Models 3 and 4 include the party and candidate-level variables, Models 5 and 6 the control variables. In line with the change of government, the incumbent dummies are now recoded for the SPD-led coalition with the Greens and the FDP.
+
+\newpage
+
+```{r regpostelection, echo=FALSE, warning=FALSE, message=FALSE, results='asis'}
+# wrangling --------------------------------------------------------------------
+
+post_election <- tweets %>%
+  filter(tweet_date > election)
+
+post_election <- post_election %>%
+  mutate(incumbent = ifelse(party %in% c('SPD', 'GRÜNE', 'FDP'), 1, 0)) %>%
+  mutate(chancellor = ifelse(party %in% c('SPD'), 1, 0)) %>%
+  mutate(prr = ifelse(party %in% c('AfD'), 1, 0)) %>%
+  mutate(gender = recode(gender, 'male' = 1, 'female' = 2, 'diverse' = 2)) %>%
+  mutate(time_to_election = as.numeric(difftime(election, tweet_date, units = "weeks"))) %>%
+  select(twitter_handle, name, gender, party, incumbent, chancellor,
+         prr, listed_candidate, direct_candidate, time_to_election,
+         sentiment.norm, sentiment, negterms, posterms, terms)
+  
+
+# regressions ------------------------------------------------------------------
+
+# estimate models
+model1 <- lm(sentiment.norm ~ incumbent, data = post_election)
+model2 <- lm(sentiment.norm ~ incumbent + chancellor, data = post_election)
+model3 <- lm(sentiment.norm ~ incumbent + chancellor + prr, data = post_election)
+model4 <- lm(sentiment.norm ~ incumbent + chancellor + prr + gender, data = post_election)
+model5 <- lm(sentiment.norm ~ incumbent +chancellor + prr + gender + time_to_election,data = post_election)
+model6 <- lm(sentiment.norm ~ incumbent +chancellor + prr + gender + time_to_election + terms,data = post_election)
+
+
+# stargazer output
+cat("\\begin{table}[H]
+    \\centering
+    \\caption{OLS Regression: Tweets one Year after the 2021 Election}
+    \\label{tab:regtwo}")
+stargazer(model1, model2, model3, model4, model5, model6,
+          float = F,
+          header= F,
+          omit.stat = c("ser", "f"),
+          type = "latex",
+          font.size = "scriptsize",
+          covariate.labels = c("Incumbent",
+                               "Incumbent x Chancellor.         ",
+                               "Radical Right",
+                               "Gender (Ref. Female)",
+                               "Weeks to Election",
+                               "Terms"),
+          dep.var.caption = "Dependent Variable: Normalized Sentiment Score",
+          dep.var.labels.include = F,
+          omit.table.layout = "n")
+
+cat("\\vspace{0.5em} % Add some vertical space between the table and note
+    \\begin{minipage}{0.95\\linewidth}
+    \\scriptsize
+    \\textit{Note}: Standard errors are in parentheses. Significance values are indicated with: $^*$p$<$0.1; $^{**}$p$<$0.05;
+    $^{***}$p$<$0.01.
+    The Data includes all tweets posted by candidates after the 2021 German federal election (Timeframe: 2021/09/26 - 2022/09/26).
+    The Incumbent dummy equals 1 if the candidate is a member of the SPD, Grüne or FDP, 0 if otherwise. The Incumbent x Chancellor dummy
+    equals 1 if the Candidate is a member of the SPD, 0 if otherwise. The Radical Right dummy equals 1 if the candidate is a
+    member of the AfD, 0 if otherwise. The Gender dummy equals 1 if the candidate is male, 0 if female.
+    \\end{minipage}
+    \\end{table}")
+cat("\\vspace{-.8cm}")
+```
+
+Consistent with the party-level trends outlined in `@ref(fig:plotsentimentweekly)`, being part of the incumbent party is also associated with tweeting in a more positive manner in the new legislative period. Model 1 highlights this with a statistically significant coefficient of *0.026*. Even as governments change, the positive tone of the incumbents' emotive language remains consistent. However, once controlling for all covariates, this effect decreases to *0.011*. In this regard, it is noteworthy that, consistent with the findings in Table \ref{tab:regone}, accounting for all control variables, the *Incumbent x Chancellor* coefficient is with a size of *0.018* larger than the single *Incumbent* effect. This suggests that now the SPD is the primary driver behind the positive tone in the new government and the Greens and FDP might not be as influenced by incumbency. This interpretation aligns well with the trends observed in Figure `@ref(fig:plotsentimentweekly)`. In general, it appears that the dynamics hypothesized in \ref{hypothesis:H1} and \ref{hypothesis:H2} are not limited to electioneering, but, although a bit weaker, permanently influence parties' communication on Twitter. Aside from this, the *Gender* and *Radical Right* coefficients are also consistent with those in Table \ref{tab:regone}, therefore as well seem robust to the change in government and point in time during the election cycle.
+
+Finally, across all analyses presented, a pattern is apparent that sentiment scores seem to be centered closely around zero. Despite the trends and effects (mostly) aligning with the theory, the parties exhibit only minor variations in the second decimal place on the normalized sentiment variable. This might be attributed to the dictionary-based-method and computation of the dependent variable (see [*section 3.1.2*](#dv)). I will address this and, in general, provide a comprehensive assessment of the measurement and validity in the next section [*5 Robustness Checks*](#robustness).

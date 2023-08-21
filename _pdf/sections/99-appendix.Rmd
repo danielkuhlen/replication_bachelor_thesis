@@ -1,0 +1,428 @@
+\newpage
+\appendix
+
+# Appendix
+
+## Figures
+
+```{r partypositions, echo=FALSE, warning=FALSE, message=FALSE, fig.cap="German Parties' Positions", fig.pos="H", out.width='100%', fig.align='center'}
+import("/Users/danielkuhlen/Desktop/uni/ba/02_data/01_raw_data/manifestodata.csv") %>%
+  filter(countryname == "Germany") %>% 
+  filter(partyabbrev %in% c("SPD","FDP","CDU/CSU","90/Greens","LINKE","AfD")) %>%
+  mutate(partyabbrev = case_when(
+    partyabbrev == "LINKE" ~ "LEFT",
+    partyabbrev == "90/Greens" ~ "GREEN",
+    TRUE ~ as.character(partyabbrev))) %>%
+  select(countryname, edate, date, party, partyname, partyabbrev, pervote, rile) %>%
+  mutate(partyabbrev = factor(partyabbrev,
+                      levels = c("LEFT", "GREEN", "SPD", "FDP",
+                                 "CDU/CSU", "AfD")),
+         date = paste0(date, "01"),
+         date = as.Date(date, format = "%Y%m%d")) %>%
+  filter(date >= "2000-01-01") %>%
+  ggplot(aes(x = date, y = rile, color = partyabbrev)) +
+  geom_smooth(se = F) +
+  geom_point() +
+  geom_point(se=FALSE, size = .1, alpha = .4) +
+  geom_smooth(se=F, span = .6) +
+  labs(x = "",
+       y = "Left-  Right Scale",
+       color = "Party") +
+  scale_color_manual(values = c("LEFT" = "#BE3075",
+                                "GREEN" = "#1AA037",
+                                "SPD" = "#E3000F",
+                                "FDP" = "#FFEF00",
+                                "CDU/CSU" = "#000000",
+                                "AfD" = "#0489DB")) +
+  scale_y_continuous(breaks = c(-40, -20, 0, 20),
+                     labels = c("-  40", "-  20", "0", "20")) +
+  theme_bw() +
+  theme(text = element_text(family = "LM Roman 10"))
+```
+
+```{r partypositionsnote, echo=FALSE, warning=FALSE, message=FALSE, results='asis'}
+cat("\\vspace{-0.3cm}
+\\begin{center}
+    \\begin{minipage}{\\linewidth}
+    \\scriptsize
+    \\textit{Note}: The data is from the Manifesto Data Collection (Version 2023a). The left-right scale represents the party's
+    position, as measured by the RILE score. A negative score indicates a more left ideology and a positive score a more right ideology.
+    \\end{minipage}
+\\end{center}")
+```
+
+\newpage
+
+```{r examplescoring, echo=FALSE, warning=FALSE, message=FALSE, fig.cap="Demonstration of the Sentiment Scoring", fig.pos="H", out.width='100%'}
+knitr::include_graphics("/Users/danielkuhlen/Desktop/uni/ba/02_data/03_tables_figures/example_scoring.png")
+```
+
+\newpage
+
+```{r sentimenthist, echo=FALSE, warning=FALSE, message=FALSE, fig.cap="Distribution of Normalized Sentiment Scores", fig.pos="H", fig.align='left', out.width="95%"}
+ggplot(tweets, aes(x = sentiment.norm)) +
+  geom_histogram(aes(y = ..density..), bins = 50, fill = "#90D7FF", color = "black", size = .1) +
+  geom_density(color = "red", size = .2, adjust = 3) +
+  scale_y_continuous(breaks = seq(0, 300000, 100000), 
+                     labels = function(x) paste0(x / 1000, "k")) +
+  scale_x_continuous(breaks = c(-1, -.5, 0, .5, 1),
+                     labels = c("-  1", "-  0.5", "0", "0.5", "1")) +
+  labs(x = "Normalized Sentiment Score",
+       y = "Density") +  # Changed "Frequency" to "Density" to reflect the y-axis
+  theme_bw() +
+  theme(text = element_text(family = "LM Roman 10"),
+        plot.caption = element_text(hjust = 0,
+                                    size = 8,
+                                    face="italic",
+                                    margin = margin(t = 8)),
+        axis.text.y = element_text(angle = 45, hjust = 1),
+        axis.title.x = element_text(size = 8),
+        axis.title.y = element_text(size = 8))
+```
+
+
+\newpage
+
+```{r plotsentimentweeklyappendix, echo=FALSE, warning=FALSE, message=FALSE, fig.cap="Sentiment over Time (w/o neutral tweets)", fig.pos="H", fig.align='center', out.width="100%"}
+weekly_sentiment_appendix %>%
+  mutate(party = case_when(
+    party == "LINKE" ~ "LEFT",
+    party == "GRÜNE" ~ "GREEN",
+    TRUE ~ as.character(party))) %>%
+  mutate(tweet_week_date = as.Date(tweet_week_date)) %>%
+  mutate(party = recode(party,
+                        "CDU" = "CDU/CSU",
+                        "CSU" = "CDU/CSU")) %>%
+  ggplot(aes(x = tweet_week_date, y = sentiment.norm, color = party)) +
+  geom_point(se=FALSE, size = .1, alpha = .4) +
+  geom_smooth(se=F, span = .6) +
+  geom_vline(xintercept = as.Date("2021-12-08"), linetype="dashed", color = "black") +
+  geom_vline(xintercept = as.Date("2021-09-26"), linetype="dashed", color = "black") +
+  labs(x = "",
+       y = "Sentiment",
+       color = "Party") +
+  scale_color_manual(values = c("LEFT" = "#BE3075",
+                                "GREEN" = "#1AA037",
+                                "SPD" = "#E3000F",
+                                "FDP" = "#FFEF00",
+                                "CDU/CSU" = "#000000",
+                                "AfD" = "#0489DB")) +
+  theme_bw() +
+  theme(text = element_text(family = "LM Roman 10"),
+        plot.caption = element_text(hjust = 0,
+                                    size = 8,
+                                    face="italic",
+                                    margin = margin(t = 8)),
+        legend.position = "bottom",
+        legend.margin = margin(-18, 0, 2, 0),
+        axis.title.y = element_text(size = 8),
+        plot.margin = margin(t = 1, r = 5, b = 0, l = 1, unit = "pt")) +
+  guides(color = guide_legend(nrow = 1, title = NULL)) +
+  scale_x_date(expand = c(0, 3), 
+               breaks = as.Date(c("2020-09-26", "2021-09-26",
+                                  "2021-12-08", "2022-09-26")),
+               labels = c("2020/09/26", "2021/09/26\n(Election)",
+                        "2021/12/08\n(New Govt.)", "2022/09/26")) +
+  ylim(-0.03, 0.04) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+```{r sentimentweeklyappendixnote, echo=FALSE, warning=FALSE, message=FALSE, results='asis'}
+cat("\\vspace{-0.2cm}
+\\begin{center}
+    \\begin{minipage}{\\linewidth}
+    \\scriptsize
+    \\textit{Note}: All Tweets with a normalized sentiment score of zero are excluded.
+    Every point indicates a week's average sentiment of candidates from one party.
+    The data points have been smoothed using a locally weighted scatterplot smoothing (LOESS) approach. In this plot,
+    a span of 0.6 was chosen to balance the trade-off between capturing the local structure and maintaining a global perspective on
+    sentiment trends. 
+    \\end{minipage}
+\\end{center}")
+```
+
+
+## Tables
+
+\begin{table}[H]
+    \begin{center}
+        \caption{Variables included in the Tweets-Dataset}
+        \label{tab:apptable}
+        {\footnotesize
+        \begin{tabularx}{\textwidth}{LCC} % Adjust the column types
+        \hline \hline
+        Variable Name & Type & Source \\
+        \hline
+        `r gsub("_", "\\\\_", colnames(tweets)[1])` & Categorical & Twitter API \\
+        `r gsub("_", "\\\\_", colnames(tweets)[2])` & Categorical & Twitter API \\
+        `r gsub("_", "\\\\_", colnames(tweets)[3])` & Text Data & Twitter API \\
+        `r gsub("_", "\\\\_", colnames(tweets)[4])` & Text Data & Twitter API \\
+        `r gsub("_", "\\\\_", colnames(tweets)[5])` & Categorical & Twitter API \\
+        `r gsub("_", "\\\\_", colnames(tweets)[6])` & Date & Twitter API \\
+        `r gsub("_", "\\\\_", colnames(tweets)[7])` & Continuous & Twitter API \\
+        `r gsub("_", "\\\\_", colnames(tweets)[8])` & Continuous & Twitter API \\
+        `r gsub("_", "\\\\_", colnames(tweets)[9])` & Continuous & Twitter API \\
+        `r gsub("_", "\\\\_", colnames(tweets)[10])` & Categorical & GLES / EPIN \\
+        `r gsub("_", "\\\\_", colnames(tweets)[11])` & Categorical & GLES / EPIN \\
+        `r gsub("_", "\\\\_", colnames(tweets)[12])` & Categorical & GLES / EPIN \\
+        `r gsub("_", "\\\\_", colnames(tweets)[13])` & Categorical & GLES / EPIN \\
+        `r gsub("_", "\\\\_", colnames(tweets)[14])` & Categorical & GLES / EPIN \\
+        `r gsub("_", "\\\\_", colnames(tweets)[15])` & Categorical & GLES / EPIN \\
+        `r gsub("_", "\\\\_", colnames(tweets)[16])` & Binary & GLES \\
+        `r gsub("_", "\\\\_", colnames(tweets)[17])` & Binary & GLES \\
+        `r gsub("_", "\\\\_", colnames(tweets)[18])` & Binary & GLES \\
+        `r gsub("_", "\\\\_", colnames(tweets)[19])` & Binary & EPIN \\
+        `r gsub("_", "\\\\_", colnames(tweets)[20])` & Binary & EPIN \\
+        `r gsub("_", "\\\\_", colnames(tweets)[21])` & Binary & EPIN \\
+        `r gsub("_", "\\\\_", colnames(tweets)[22])` & Binary & EPIN \\
+        `r gsub("_", "\\\\_", colnames(tweets)[23])` & Binary & EPIN \\
+        `r gsub("_", "\\\\_", colnames(tweets)[24])` & Binary & EPIN \\
+        `r gsub("_", "\\\\_", colnames(tweets)[25])` & Binary & EPIN \\
+        `r gsub("_", "\\\\_", colnames(tweets)[26])` & Binary & Twitter API \\
+        `r gsub("_", "\\\\_", colnames(tweets)[27])` & Categorical & Twitter API \\
+        `r gsub("_", "\\\\_", colnames(tweets)[28])` & Date & Twitter API \\
+        `r gsub("_", "\\\\_", colnames(tweets)[29])` & Categorical & Twitter API \\
+        `r gsub("_", "\\\\_", colnames(tweets)[30])` & Continuous & Twitter API \\
+        `r gsub("_", "\\\\_", colnames(tweets)[31])` & Continuous & Twitter API \\
+        `r gsub("_", "\\\\_", colnames(tweets)[32])` & Continuous & Twitter API \\
+        `r gsub("_", "\\\\_", colnames(tweets)[33])` & Continuous & Twitter API \\
+        \hline \hline
+        \end{tabularx}}
+    \end{center}
+\end{table}
+
+\newpage
+
+```{r sumstats, echo=FALSE, warning=FALSE, message=FALSE, results='asis'}
+summary_data <- tweets %>%
+  as.data.frame() %>% 
+  select(posterms, negterms, sentiment, sentiment.norm)
+
+cat("\\begin{table}[!htb]
+    \\centering
+    \\caption{Summary Statistics: Sentiment Variables}
+    \\label{tab:sumstats}")
+# summary statistics
+stargazer(summary_data,
+          covariate.labels = c("Positive Terms", "Negative Terms", "Raw Sentiment Score", "Standardized Sentiment Score"),
+          float = F,
+          header= F,
+          digits = 2,
+          type = "latex")
+cat("\\end{table}")
+```
+
+\newpage
+
+```{r regpreelectionneutral, echo=FALSE, warning=FALSE, message=FALSE, results='asis'}
+# wrangling --------------------------------------------------------------------
+
+# election day
+election <- as.POSIXct("2021-09-26", format = "%Y-%m-%d")
+
+pre_election <- tweets %>%
+  filter(sentiment.norm != 0) %>%
+  filter(tweet_date < election)
+
+pre_election <- pre_election %>%
+  mutate(incumbent = ifelse(party %in% c('CDU', 'CSU', 'SPD'), 1, 0)) %>%
+  mutate(chancellor = ifelse(party %in% c('CDU', 'CSU'), 1, 0)) %>%
+  mutate(prr = ifelse(party %in% c('AfD'), 1, 0)) %>%
+  mutate(binary_position = if_else(binary_federal_parliamentarian +
+                                         binary_state_parliamentarian +
+                                         binary_european_parliamentarian +
+                                         binary_federal_state_secretary +
+                                         binary_state_state_secretary +
+                                         binary_federal_minister +
+                                         binary_state_minister> 0, 1, 0)) %>%
+  mutate(gender = recode(gender, 'male' = 1, 'female' = 2, 'diverse' = 2)) %>%
+  mutate(time_to_election = as.numeric(difftime(election, tweet_date, units = "weeks"))) %>%
+  select(twitter_handle, name, gender, party, incumbent, chancellor,
+         prr, binary_position, listed_candidate, direct_candidate, time_to_election,
+         sentiment.norm, sentiment, negterms, posterms, terms)
+  
+
+# regressions ------------------------------------------------------------------
+
+# estimate models
+model1 <- lm(sentiment.norm ~ incumbent, data = pre_election)
+model2 <- lm(sentiment.norm ~ incumbent + chancellor, data = pre_election)
+model3 <- lm(sentiment.norm ~ incumbent + chancellor + prr, data = pre_election)
+model4 <- lm(sentiment.norm ~ incumbent + chancellor + prr  + gender, data = pre_election)
+model5 <- lm(sentiment.norm ~ incumbent +chancellor + prr  + gender + time_to_election,data = pre_election)
+model6 <- lm(sentiment.norm ~ incumbent +chancellor + prr  + gender + time_to_election + terms,data = pre_election)
+
+# stargazer output
+cat("\\begin{table}[H]
+    \\centering
+    \\caption{OLS Regression: Tweets one Year before the 2021 Election (w/o neutral Tweets)}
+    \\label{tab:regoneneutral}")
+stargazer(model1, model2, model3, model4, model5, model6,
+          float = F,
+          header= F,
+          omit.stat = c("ser", "f"),
+          type = "latex",
+          font.size = "scriptsize",
+          covariate.labels = c("Incumbent",
+                               "Incumbent x Chancellor",
+                               "Radical Right",
+                               "Gender (Ref. Female)",
+                               "Weeks to Election",
+                               "Terms"),
+          dep.var.caption = "Dependent Variable: Normalized Sentiment Score",
+          dep.var.labels.include = F,
+          omit.table.layout = "n")
+cat("\\vspace{0.5em} % Add some vertical space between the table and note
+    \\begin{minipage}{0.95\\linewidth}
+    \\scriptsize
+    \\textit{Note}: Standard errors are in parentheses. Significance values are indicated with: $^*$p$<$0.1; $^{**}$p$<$0.05;
+    $^{***}$p$<$0.01. The data includes Tweets posted by candidates prior to the 2021 German federal election (Timeframe:
+    2020/09/26 - 2021/09/26). In this case, all Tweets with a neutral normalized sentiment score of zero were excluded. The Incumbent dummy equals 1 if the candidate is a member of the CDU/CDSU or SPD, 0 if otherwise. The
+    Incumbent x Chancellor dummy equals 1 if the candidate is a member of the CDU/CSU, 0 if otherwise. The Radical Right dummy equals 1 if
+    the candidate is a member of the AfD, 0 if otherwise. The Gender dummy equals 1 if the candidate is male, 0 if female. 
+    \\end{minipage}
+    \\end{table}")
+```
+
+\newpage
+
+```{r regcampaigning, echo=FALSE, warning=FALSE, message=FALSE, results='asis'}
+# wrangling --------------------------------------------------------------------
+
+# three months before election
+threemonths <- as.POSIXct("2021-06-26", format = "%Y-%m-%d")
+election <- as.POSIXct("2021-09-26", format = "%Y-%m-%d")
+
+campaigning <- tweets %>%
+  filter(tweet_date > threemonths) %>% 
+  filter(tweet_date < election)
+
+campaigning <- campaigning %>%
+  mutate(incumbent = ifelse(party %in% c('CDU', 'CSU', 'SPD'), 1, 0)) %>%
+  mutate(chancellor = ifelse(party %in% c('CDU', 'CSU'), 1, 0)) %>%
+  mutate(prr = ifelse(party %in% c('AfD'), 1, 0)) %>%
+  mutate(binary_position = if_else(binary_federal_parliamentarian +
+                                         binary_state_parliamentarian +
+                                         binary_european_parliamentarian +
+                                         binary_federal_state_secretary +
+                                         binary_state_state_secretary +
+                                         binary_federal_minister +
+                                         binary_state_minister> 0, 1, 0)) %>%
+  mutate(gender = recode(gender, 'male' = 1, 'female' = 2, 'diverse' = 2)) %>%
+  mutate(time_to_election = as.numeric(difftime(election, tweet_date, units = "weeks"))) %>%
+  select(twitter_handle, name, gender, party, incumbent, chancellor,
+         prr, binary_position, listed_candidate, direct_candidate, time_to_election,
+         sentiment.norm, sentiment, negterms, posterms, terms)
+  
+
+# regressions ------------------------------------------------------------------
+
+# estimate models
+model1 <- lm(sentiment.norm ~ incumbent, data = campaigning)
+model2 <- lm(sentiment.norm ~ incumbent + chancellor, data = campaigning)
+model3 <- lm(sentiment.norm ~ incumbent + chancellor + prr, data = campaigning)
+model4 <- lm(sentiment.norm ~ incumbent + chancellor + prr  + gender, data = campaigning)
+model5 <- lm(sentiment.norm ~ incumbent +chancellor + prr  + gender + time_to_election,data = campaigning)
+model6 <- lm(sentiment.norm ~ incumbent +chancellor + prr + gender + time_to_election + terms,data = campaigning)
+
+# stargazer output
+cat("\\begin{table}[H]
+    \\centering
+    \\caption{OLS Regression: Tweets three months before the 2021 Election}
+    \\label{tab:regcampaign}")
+stargazer(model1, model2, model3, model4, model5, model6,
+          float = F,
+          header= F,
+          omit.stat = c("ser", "f"),
+          type = "latex",
+          font.size = "scriptsize",
+          covariate.labels = c("Incumbent",
+                               "Incumbent x Chancellor",
+                               "Radical Right",
+                               "Gender (Ref. Female)",
+                               "Weeks to Election",
+                               "Terms"),
+          dep.var.caption = "Dependent Variable: Normalized Sentiment Score",
+          dep.var.labels.include = F,
+          omit.table.layout = "n")
+cat("\\vspace{0.5em} % Add some vertical space between the table and note
+    \\begin{minipage}{0.95\\linewidth}
+    \\scriptsize
+    \\textit{Note}: Standard errors are in parentheses. Significance values are indicated with: $^*$p$<$0.1; $^{**}$p$<$0.05;
+    $^{***}$p$<$0.01.
+    The data includes all Tweets posted by candidates three months prior to the 2021 German federal election (Timeframe: 2021/06/26 -
+    2021/09/26).
+    The Incumbent dummy equals 1 if the candidate is a member of the CDU/CDSU or SPD, 0 if otherwise. The Incumbent x Chancellor Dummy
+    equals 1 if the candidate is a member of the CDU/CSU, 0 if otherwise. The Radical Right dummy equals 1 if the candidate is a
+    member of the AfD, 0 if otherwise. The Gender dummy equals 1 if the candidate is male, 0 if female. 
+    \\end{minipage}
+    \\end{table}")
+cat("\\clearpage")
+```
+
+
+
+```{r regnewgoverment, echo=FALSE, warning=FALSE, message=FALSE, results='asis'}
+# wrangling --------------------------------------------------------------------
+
+# new coalition formed
+newgov <- as.POSIXct("2021-12-08", format = "%Y-%m-%d")
+  
+post_goverment <- tweets %>%
+  filter(tweet_date > newgov)
+
+post_goverment <- post_goverment %>%
+  mutate(incumbent = ifelse(party %in% c('SPD', 'GRÜNE', 'FDP'), 1, 0)) %>%
+  mutate(chancellor = ifelse(party %in% c('SPD'), 1, 0)) %>%
+  mutate(prr = ifelse(party %in% c('AfD'), 1, 0)) %>%
+  mutate(gender = recode(gender, 'male' = 1, 'female' = 2, 'diverse' = 2)) %>%
+  mutate(time_to_election = as.numeric(difftime(election, tweet_date, units = "weeks"))) %>%
+  select(twitter_handle, name, gender, party, incumbent, chancellor,
+         prr, listed_candidate, direct_candidate, time_to_election,
+         sentiment.norm, sentiment, negterms, posterms, terms)
+  
+
+# regressions ------------------------------------------------------------------
+
+# estimate models
+model1 <- lm(sentiment.norm ~ incumbent, data = post_goverment)
+model2 <- lm(sentiment.norm ~ incumbent + chancellor, data = post_goverment)
+model3 <- lm(sentiment.norm ~ incumbent + chancellor + prr, data = post_goverment)
+model4 <- lm(sentiment.norm ~ incumbent + chancellor + prr + gender, data = post_goverment)
+model5 <- lm(sentiment.norm ~ incumbent +chancellor + prr + gender + time_to_election,data = post_goverment)
+model6 <- lm(sentiment.norm ~ incumbent +chancellor + prr + gender + time_to_election + terms,data = post_goverment)
+
+# stargazer output
+cat("\\begin{table}[H]
+    \\centering
+    \\caption{OLS Regression: Tweets after the new Government was formed}
+    \\label{tab:regnewgvt}")
+stargazer(model1, model2, model3, model4, model5, model6,
+          float = F,
+          header= F,
+          omit.stat = c("ser", "f"),
+          type = "latex",
+          font.size = "scriptsize",
+          covariate.labels = c("Incumbent",
+                               "Incumbent x Chancellor",
+                               "Radical Right",
+                               "Gender (Ref. Female)",
+                               "Weeks to Election",
+                               "Terms"),
+          dep.var.caption = "Dependent Variable: Normalized Sentiment Score",
+          dep.var.labels.include = F,
+          omit.table.layout = "n")
+
+cat("\\vspace{0.5em} % Add some vertical space between the table and note
+    \\begin{minipage}{0.95\\linewidth}
+    \\scriptsize
+    \\textit{Note}: Standard errors are in parentheses. Significance values are indicated with: $^*$p$<$0.1; $^{**}$p$<$0.05;
+    $^{***}$p$<$0.01.
+    The data includes all Tweets posted by candidates after the formation of the new government (Timeframe: 2021/12/08 - 2022/09/26).
+    The Incumbent dummy equals 1 if the Candidate is a member of the SPD, Grüne or FDP, 0 if otherwise. The Incumbent x Chancellor
+    equals 1 if the candidate is a member of the SPD, 0 if otherwise. The Radical Right dummy equals 1 if the candidate is a
+    member of the AfD, 0 if otherwise. The Gender dummy equals 1 if the candidate is male, 0 if female.
+    \\end{minipage}
+    \\end{table}")
+cat("\\clearpage")
+```

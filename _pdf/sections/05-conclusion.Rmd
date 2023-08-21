@@ -1,0 +1,151 @@
+# Robustness Checks {#robustness}
+
+The small effect sizes in the analysis appear to stem from the distribution of the normalized sentiment scores (displayed in Figure `@ref(fig:sentimenthist)` in the Appendix). The majority of tweets receive a neutral score of zero with positive and negative scores around following the curve of a normal distribution. Therefore, despite the scores showing reasonable variance, when calculating party level averages they may balance each other out, which could be an explanation for the marginal differences in Figure `@ref(fig:plotsentimentweekly)` and effect sizes in Tables \ref{tab:regone} and \ref{tab:regtwo}. To address this, I rerun the main regression (Table \ref{tab:regone}) and trend analysis (Figure `@ref(fig:plotsentimentweekly)`) excluding all neutral coded Tweets with a score of 0. The results for this are depicted in Table \ref{tab:regoneneutral} and Figure `@ref(fig:plotsentimentweeklyappendix)` in the Appendix. The findings for the clearly positive or negative coded tweets correspond to the results of the main analysis, therefore suggesting it is not exclusively the tendency of the method to code tweets as neutral, which causes the small effects, but it is either due to a very balanced sentiment of the tweets or indicates that the dictionary does not capture sufficiently fine-grained sentiment differences in the text. Consequently, it is imperative to further validate the methodology and to verify whether the dictionary-based approach correctly measures the intended target dimension. 
+
+## Validating the Sentiment Dictionary
+
+### Comparison with the LIWC Dictionary
+In addition to the dictionary developed by @rauhValidatingSentimentDictionary2018, numerous other dictionaries find application in political science. To begin with, I want to test whether the results are robust to the choice of dictionary. For this I rerun the main regression (Table \ref{tab:regone}) with the LIWC's *Tone* variable as dependent variable instead of the previously used normalized sentiment score. The LIWC software, as done in the analysis, reads the text word by word, compares each word with the glossary on which the program is based, and classifies the words. In this case, LIWC2015's German word lexicon was utilized. The *Tone* variable ranges from 0 - 100 and is the result of the calculated difference between positive and negative words [@cohnLinguisticMarkersPsychological2004, 689]. Values of 50 indicate a neutral, higher values a more positive and lower values a more negative sentiment. The results for this regression are presented in Table \ref{tab:regliwcpreelection}.
+
+I find that the results are robust to the choice of dictionary. Table \ref{tab:regliwcpreelection} with the *LIWC-Tone* as  dependent variable shows comparable effects to Table \ref{tab:regone}. Notably, all effects are larger with this approach. This, most likely,  arises from the variable's scaling, which ranging from 0 - 100, offers a more intuitive interpretation compared to the normalized sentiment score with a span from -1 to 1. However, it might also be the case that the LIWC dictionary detects sentiment a bit differently. Nonetheless, in principle, the results confirm that the intended target dimension is correctly captured and, therefore, provide further support to the robustness of the findings.  
+
+```{r regliwcpreelection, echo=FALSE, warning=FALSE, message=FALSE, results='asis'}
+# wrangling --------------------------------------------------------------------
+
+# election day
+election <- as.POSIXct("2021-09-26", format = "%Y-%m-%d")
+
+pre_election <- liwc %>%
+  filter(tweet_date < election)
+
+pre_election <- pre_election %>%
+  mutate(incumbent = ifelse(party %in% c('CDU', 'CSU', 'SPD'), 1, 0)) %>%
+  mutate(chancellor = ifelse(party %in% c('CDU', 'CSU'), 1, 0)) %>%
+  mutate(prr = ifelse(party %in% c('AfD'), 1, 0)) %>%
+  mutate(gender = recode(gender, 'male' = 1, 'female' = 2, 'diverse' = 2)) %>%
+  mutate(time_to_election = as.numeric(difftime(election, tweet_date, units = "weeks"))) %>%
+  select(twitter_handle, name, gender, party, incumbent, chancellor,
+         prr, time_to_election, sentiment.norm, sentiment, negterms, posterms, terms, Tone)
+  
+
+# regressions ------------------------------------------------------------------
+
+# estimate models
+model1 <- lm(Tone ~ incumbent, data = pre_election)
+model2 <- lm(Tone ~ incumbent + chancellor, data = pre_election)
+model3 <- lm(Tone ~ incumbent + chancellor + prr, data = pre_election)
+model4 <- lm(Tone ~ incumbent + chancellor + prr  + gender, data = pre_election)
+model5 <- lm(Tone ~ incumbent +chancellor + prr  + gender + time_to_election,data = pre_election)
+model6 <- lm(Tone ~ incumbent +chancellor + prr  + gender + time_to_election + terms,data = pre_election)
+
+# stargazer output
+cat("\\begin{table}[H]
+    \\centering
+    \\caption{OLS Regression: Tweets one Year before the 2021 Election (w/LIWC-Data)}
+    \\label{tab:regliwcpreelection}")
+stargazer(model1, model2, model3, model4, model5, model6,
+          float = F,
+          header= F,
+          omit.stat = c("ser", "f"),
+          type = "latex",
+          font.size = "scriptsize",
+          covariate.labels = c("Incumbent",
+                               "Incumbent x Chancellor",
+                               "Radical Right",
+                               "Gender (Ref. Female)",
+                               "Weeks to Election",
+                               "Terms"),
+          dep.var.caption = "Dependent Variable: LIWC Tone",
+          dep.var.labels.include = F,
+          omit.table.layout = "n")
+cat("\\vspace{0.5em} % Add some vertical space between the table and note
+    \\begin{minipage}{0.95\\linewidth}
+    \\scriptsize
+    \\textit{Note}: Standard errors are in parentheses. Significance values are indicated with: $^*$p$<$0.1; $^{**}$p$<$0.05;
+    $^{***}$p$<$0.01. The Data includes all Tweets posted by candidates prior to the 2021 German federal election (Timeframe:
+    2020/09/26 - 2021/09/26). The Incumbent dummy equals 1 if the candidate is a member of the CDU/CDSU or SPD, 0 if otherwise. The
+    Incumbent x Chancellor dummy equals 1 if the candidate is a member of the CDU/CSU, 0 if otherwise. The Radical Right dummy equals 1 if
+    the candidate is a member of the AfD, 0 if otherwise. The Gender dummy equals 1 if the candidate is male, 0 if female. 
+    \\end{minipage}
+    \\end{table}")
+```
+
+### Comparison with Human Coded Sentiment
+While comparing scores with another dictionary provides some confidence in the sentiment measurement, it doesn't conclusively validate that dictionary-based methods can accurately detect a tweet's true tone. Tweets often contain elements of irony, wherein the expressed sentiment differs from the underlying intent, are context-dependent or include quotations. These intricate nuances might be overlooked when merely tallying the text's positive and negative words. Consequently, dictionary-based approaches may misinterpret a tweet's genuine tone, which, in reality, significantly influences the reader's perception. To address this, I cross-validated my results using human judgment. I randomly selected 200 tweets from the dataset and had them assessed by three coders (one of them being myself). Each coder read the tweets and coded the sentiment on a scale from -100 to 100.^[Instead of the -1 to 1 scale I used this to provide the possibility of more fine grained judgment.] They were directed to rate the tweets independent of their own political beliefs and solely focus on the emotional language employed. Table \ref{tab:humancoders} offers a brief overview of the coders and Table \ref{tab:correlation} displays the Pearson correlations between the different coders and dictionary scores. 
+
+\begin{table}[H]
+    \begin{center}
+        \caption{Human Coders}
+        \label{tab:humancoders}
+        {\footnotesize
+        \begin{tabularx}{\textwidth}{LCCC}
+        \hline \hline
+        & Coder 1 & Coder 2 & Coder 3 \\
+        \hline
+        Gender & male & female & female \\
+        Age & 24 & 22 & 24\\
+        \hline \hline
+        \end{tabularx}}
+    \end{center}
+\end{table}
+
+\begin{table}[H]
+    \begin{center}
+        \caption{Correlation Matrix for Coder and Dictionary Scores}
+        \label{tab:correlation}
+        {\footnotesize
+        \begin{tabularx}{\textwidth}{LCCCCC}
+        \hline \hline
+                   & Coder 1 & Coder 2 & Coder 3 & Rauh Dic. & LIWC Dic. \\
+        \hline
+        Coder 1     & 1.0000 & 0.7939 & 0.7950 & 0.4040 & 0.4664 \\
+        Coder 2     & 0.7939 & 1.0000 & 0.8677 & 0.4377 & 0.4928 \\
+        Coder 3     & 0.7950 & 0.8677 & 1.0000 & 0.4538 & 0.5343 \\
+        Rauh Dic.    & 0.4040 & 0.4377 & 0.4538 & 1.0000 & 0.4450 \\
+        LIWC Dic.            & 0.4664 & 0.4928 & 0.5343 & 0.4450 & 1.0000 \\
+        \hline \hline
+        \end{tabularx}}
+    \end{center}
+\end{table}
+\vspace{-.5cm}
+The three coders appear to have a strong consensus regarding the sentiment of the tweets. Their scores indicate a high correlation, with Pearson's coefficients consistently exceeding *0.7*. This suggest an important first finding: coders seem to be largely in agreement about a tweets emotive framing. However, the dictionary provided by @rauhValidatingSentimentDictionary2018, as well as by LIWC, are only moderately correlated with the hand coded scores. The Pearson correlations range from *0.4 - 0.05*, indicating some, but not really compelling agreement. To further investigate this discrepancy between human and dictionary coding, I plot the values against each other in Figure `@ref(fig:humancoderscatter)`.
+
+```{r humancoderscatter, echo=FALSE, warning=FALSE, message=FALSE, fig.cap="Comparison between Coder and Dictionary Scores", fig.pos="H", fig.align='center', out.width="100%"}
+
+humancoding_long <- humancoding %>%
+  rename("Coder 1" = "score_daniel",
+         "Coder 2" = "score_johanna",
+         "Coder 3" = "score_teona") %>%
+  gather(key = "coder", value = "score", "Coder 1", "Coder 2", "Coder 3")
+
+# plot
+humancoding_long %>%
+  ggplot(aes(x = score, y = sentiment.norm, color = coder)) +
+  geom_point(alpha = 0.5) + 
+  geom_smooth(method = "lm", se = FALSE, alpha = 1, linewidth = .5) + 
+  labs(x = "Coders' Scores",
+       y = "Rauh Dictionary Sentiment Scores") +
+  theme_bw() +
+  theme(text = element_text(family = "LM Roman 10"),
+        legend.position = "bottom",
+        legend.title = element_blank(),
+        axis.title.x = element_text(size = 8),
+        axis.title.y = element_text(size = 8)) +
+  xlim(-1, 1) +
+  ylim(-1, 1)
+```
+The scatter plot visualizes the relationship between individual coders' and dictionary sentiment scores. Each point represents one tweet and coders are differentiated by color. For every coder, linear regression lines are drawn to highlight the variables association. The plot aligns with the correlation matrix and shows a moderate association of the scores. Especially noteworthy is that human coders tend to code tweets as far more emotional than the dictionary employed in this work. The coders identified a multitude of really negative tweets around the *-0.9 - 0.7* range. For these, Rauh's sentiment dictionary only coded a slightly negative almost neutral score. Possibly the issues discussed, such as irony etc. influence this disagreement. Moreover, a couple tweets are coded as extremely positive by the dictionary, with the highest score possible of *1*, which the coders identified as neutral or moderately positive. This most likely stems from short tweets with just one or two words. To exemplify this, I take a look at one of these tweets: On May 5, 2021 Katja Wilma Mast (SPD) posted: "Empfehlung \url{https://t.co/Ip4dF26lVa}"
+
+She references a URL link, which neither the coders nor the dictionary had access to. Since not being able to judge the content referenced, but noting the recommendation, coders indicated scores of *0.3, 0.35* and *0.3*. Contrary, Rauh's dictionary suggests a score of *1*. This nicely illustrates the discussed shortcoming of the method being unable to understand context. Furthermore, even the normalized scores are still biased towards shorter texts, as one positive word on its own causes such a high score.
+
+Given these considerations, the presented findings should be approached with caution and viewed more as preliminary indicators rather than definitive proof. It appears necessary to validate the results either through machine learning approaches or by further accounting for the context of tweets to ensure a more reliable measurement. 
+
+## Time Frames
+Aside from the dictionary measurement, I also want to account for specific time frames possibly driving the effects. To investigate this, I rerun the regression from Table \ref{tab:regone}, but limit the data to tweets posted within the three months leading up to the election. Similarly, I replicate the regression from Table \ref{tab:regtwo}, excluding tweets posted before the formation of the new government. The results of these analyses are detailed in Table \ref{tab:regcampaign} and \ref{tab:regnewgvt} in the Appendix. Both sets of findings align with the primary results, confirming that no specific time periods were responsible for the main effects discussed.
+
+# Conclusion {#conclusion}
+Voters critically assess the existing status quo and assess their contentment with the track record of the incumbent party when deciding whom to endorse. Aware of this evaluative mechanism, party representatives and candidates are incentivized to strategically influence voters' perceptions of the prevailing status quo in their favor. This is achieved not only through the substance and emphasis of their campaigns but also through the use of emotional appeals.
+
+Understanding candidates' emotional strategies, especially in the realm of social media, is pivotal in today's digital age. Therefore, in this study, I expand the findings provided by @crabtreeItNotOnly2020 on strategic emotions in electioneering by studying the sentiment of parliamentary candidates around the 20th German federal election. I find that incumbency, especially for candidates affiliated with the chancellor's party, is associated with a more positive sentiment on Twitter. Furthermore, the results indicate substantial intra-party diversity, with candidates of the same party utilizing quite differing sentiments on Twitter. Lastly, I observe significant variation between female and male candidates on Twitter. The results suggest that female candidates, possibly in response to societal stereotypes, tweet in a more neutral emotional tone than their male counterparts.
+
+However, all results presented should be taken with great caution. The cross-validation conducted with three coders suggests that dictionary-based methods do not capture sentiment in the same manner as human interpretation. I find that the dictionaries provided by @rauhValidatingSentimentDictionary2018 and LIWC [@meierLIWCAufDeutsch2019] neither correlate sufficiently with hand-coded sentiment scores. As a consequence, this study provides a valuable starting point concerning the examination of candidates' emotional strategies. However, future research should employ more nuanced measurements, such as machine learning approaches, or sentiment dictionaries with a more fine-grained coding of tweet context or references. Aside from the measurement issues, subsequent research could delve into comparative analyses, explore mechanisms on other campaigning platforms, or examine the outlined intra-party diversity in more detail.

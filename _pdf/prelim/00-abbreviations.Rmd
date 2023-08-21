@@ -1,0 +1,14 @@
+# List of Abbreviations {-}
+
+\begin{tabular}{llp{1cm}rp{0.2cm}l}
+    API   & Application Programming Interface \\
+    AfD   & Alternative für Deutschland (Alternative for Germany) \\
+    CDU   & Christlich Demokratische Union Deutschlands \\
+          & (Christian Democratic Union of Germany) \\
+    CSU   & Christlich-Soziale Union in Bayern (Christian Social Union in Bavaria) \\
+    FDP   & Freie Demokratische Partei (Free Democratic Party) \\
+    Green Party & Bündnis 90/Die Grünen (Alliance 90/The Greens) \\
+    SPD   & Sozialdemokratische Partei Deutschlands \\
+          & (Social Democratic Party of Germany) \\
+    Left Party & Die Linke (The Left) \\
+\end{tabular}

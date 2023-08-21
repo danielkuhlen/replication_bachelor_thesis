@@ -1,0 +1,265 @@
+
+```{r referencedatasetsdata, echo=FALSE, warning=FALSE, message=FALSE}
+################################################################################
+# General ----------------------------------------------------------------------
+################################################################################
+
+# datasets to reference in the text
+candidates <- accounts %>%
+  filter(!is.na(gender))
+
+partyaccounts <- accounts %>%
+  filter(is.na(gender))
+
+# positive words
+positive <- sent.dictionary %>%
+  filter(sentiment == 1)
+
+# negative words
+negative <- sent.dictionary %>%
+  filter(sentiment == -1)
+```
+
+```{r datawranglingdata, echo=FALSE, warning=FALSE, message=FALSE}
+################################################################################
+# For Plot Percentage Account --------------------------------------------------
+################################################################################
+
+# datawrangling ----------------------------------------------------------------
+
+candidates2021 <- candidates2021_raw %>%
+  mutate(name = paste(firstname, lastname),
+         gender = recode(gender,
+                         "w" = "female",
+                         "m" = "male",
+                         "d" = "diverse"),
+         party = recode(party,
+                        "DIE LINKE" = "LINKE"),
+         twitter_active = ifelse(is.na(screen_name1), 0, 1)) %>%
+  rename(twitter_handle = screen_name1,
+         listed_candidate = isListed,
+         direct_candidate = isDC,
+         region = state) %>%
+  select(name, twitter_handle, gender, party, district_name, district_number,
+         region, incumbent, listed_candidate, direct_candidate, twitter_active)
+
+
+# percentage with twitter account by party -------------------------------------
+party_totals <- candidates2021 %>%
+  group_by(party) %>%
+  summarize(total = n())
+
+percentage.accounts <- candidates2021 %>%
+  group_by(party, twitter_active) %>%
+  summarize(count = n()) %>%
+  left_join(party_totals, by = "party") %>%
+  mutate(percentage = count / total * 100,
+         party = factor(party,
+                        levels = c("LINKE", "GRÜNE", "SPD", "FDP",
+                                   "CDU", "CSU", "AfD"))) %>%
+  mutate(party = case_when(
+    party == "LINKE" ~ "LEFT",
+    party == "GRÜNE" ~ "GREEN",
+    TRUE ~ as.character(party)
+  )) %>%
+  ungroup()
+
+
+# variables for referencing in text --------------------------------------------
+gruene_active_percentage <- percentage.accounts %>%
+  filter(party == "GREEN" & twitter_active == 1) %>%
+  pull(percentage)
+
+cdu_active_percentage <- percentage.accounts %>%
+  filter(party == "CDU" & twitter_active == 1) %>%
+  pull(percentage)
+```
+
+# Data and Methods {#data}
+
+## Data Sources and Collection
+@saltzerTwitterAccountsCandidates2021 offer a dataset that allows access to the account-handles^[These are the unique identifiers for an account on the platform: e.g. for Olaf Scholz *olafscholz*] of candidates running in the 2021 German Federal Election. The data permits researchers to easily access the platform's API, scrape the data they need, and then combine the tweets with the provided metadata of the person running the account. To collect the tweets for this analysis, I scrape the candidates' tweets using the *academictwitteR* package in the R programming language [@barrieAcademictwitteRPackageAccess2021].
+In total, I scraped `r format(nrow(candidates), big.mark = ",", scientific = FALSE)` Twitter-registered candidates' accounts for the year before and after the 20th German federal election on September 26, 2021.^[I also filtered the dataset to exclude all non-German tweets.] As a result, the final dataset contains `r format(nrow(tweets), big.mark = ",", scientific = FALSE)` tweets. A detailed description of the variables is provided in Table \ref{tab:apptable} in the Appendix.
+
+### Descriptives
+
+Politicians seem to use Twitter unevenly and systematic differences between parties are apparent. @vogelsPartisanDifferencesSocial2021 show that in the USA, conservatives with an older electorate tend to use more *traditional* campaign media strategies, whereas democrats affiliated with a more progressive agenda that attracts a younger demographic, tend to utilize more *modern* campaign media platforms such as Twitter, Instagram, and TikTok. This trend seems to hold true for German politicians as well. As shown in Figure `@ref(fig:plotpercentageaccount)`, 
+for example `r round(gruene_active_percentage, 1)`% of Green candidates maintain an account on Twitter, compared to a substantially lower `r round(cdu_active_percentage, 1)`% of CDU candidates. The differences in account percentages are reflected even more drastically in the actual number of tweets posted by representatives of the different parties as shown in Figure `@ref(fig:plottweetsamountybyparty)`. For instance, accounts affiliated with the Green Party have posted roughly 20 times as many tweets as those of the CSU. Nevertheless, the candidates of all parties seem generally quite active on Twitter. With the exception of the CSU, all parties are represented in the dataset with a minimum of 60,000 tweets.
+
+```{r plotpercentageaccount, echo=FALSE, warning=FALSE, message=FALSE, fig.cap="Percentage of Candidates with an Account on Twitter", fig.pos="H", fig.align='left', out.width = "95%"}
+ggplot(data = percentage.accounts, aes(x = party,
+             y = percentage,
+             fill = interaction(party, factor(twitter_active)))) +
+  geom_bar(stat = "identity",
+           position = position_dodge(width = .5)) +
+  geom_text(data = . %>% filter(twitter_active == 1),
+            aes(x = party, y = percentage, label = sprintf("%.1f", percentage)),
+            position = position_dodge(width = .5),
+            vjust = -0.5,
+            size = 3,
+            family = "LM Roman 10",
+            hjust = -.02) +
+  labs(x = "",
+       y = "") +
+  guides(fill = guide_legend(title = NULL)) +
+  scale_fill_manual(values = c("LEFT.0" = "#C0C0C0AA", "LEFT.1" = "#BE3075",
+                               "GREEN.0" = "#C0C0C0AA", "GREEN.1" = "#1AA037",
+                               "SPD.0" = "#C0C0C0AA", "SPD.1" = "#E3000F",
+                               "FDP.0" = "#C0C0C0AA", "FDP.1" = "#FFEF00",
+                               "CDU.0" = "#C0C0C0AA", "CDU.1" = "#000000",
+                               "CSU.0" = "#C0C0C0AA", "CSU.1" = "#0570C9",
+                               "AfD.0" = "#C0C0C0AA", "AfD.1" = "#0489DB"),
+                    labels = rep(c("No Twitter", "Has Twitter"), 7)) +
+  scale_y_continuous(limits = c(0, 80),
+                     breaks = seq(0, 80, 10),
+                     labels = scales::percent(seq(0, .8, 0.1))) +
+  theme_bw() +
+  theme(legend.position = "none",
+        plot.caption = element_text(hjust = 0, size = 8, face="italic", margin = margin(t = 0)),
+        text = element_text(family = "LM Roman 10"),
+        plot.margin = margin(t = 0, r = 0, b = 0, l = 0, unit = "pt"))
+```
+
+```{r plotpercentageaccountnote, echo=FALSE, warning=FALSE, message=FALSE, results='asis'}
+cat("\\vspace{-1cm}
+\\begin{center}
+    \\begin{minipage}{0.95\\linewidth}
+    \\scriptsize
+    \\textit{Note}: The colored bars represent the percentage of candidates with a Twitter account, while the grey bars indicate the percentage without one.
+    \\end{minipage}
+\\end{center}")
+```
+
+
+```{r plottweetsamountybyparty, echo=FALSE, warning=FALSE, message=FALSE, fig.cap="Number of Tweets posted by Party", fig.pos="H", fig.align='left', out.width = "95%"}
+dot_separator <- label_number(big.mark = ".")
+
+tweets %>%
+  group_by(party) %>%
+  summarise(tweet_count = n()) %>%
+  mutate(party = factor(party,
+                        levels = c("LINKE", "GRÜNE", "SPD", "FDP",
+                                   "CDU", "CSU", "AfD"))) %>%
+  mutate(party = case_when(
+    party == "LINKE" ~ "LEFT",
+    party == "GRÜNE" ~ "GREEN",
+    TRUE ~ as.character(party))) %>%
+  ungroup() %>%
+  mutate(party = reorder(party, tweet_count, FUN = max)) %>% # Reorder the factor levels
+  ggplot(aes(x = party,
+             y = tweet_count,
+             fill = party)) +
+  geom_bar(stat = "identity", width = .6) +
+  geom_text(aes(label = comma(tweet_count, big.mark = ",")),
+          hjust = -0.5,
+          size = 3,
+          family = "LM Roman 10") +
+  labs(x = "",
+       y = "") +
+  guides(fill = guide_legend(title = NULL)) +
+  scale_fill_manual(values = c("LEFT" = "#BE3075",
+                               "GREEN" = "#1AA037",
+                               "SPD" = "#E3000F",
+                               "FDP" = "#FFEF00",
+                               "CDU" = "#000000",
+                               "CSU" = "#0570C9",
+                               "AfD" = "#0489DB")) +
+  scale_y_continuous(limits = c(0, 180000),
+                     breaks = seq(0, 300000, 30000),
+                     labels = dot_separator) +
+  theme_bw() +
+  theme(text = element_text(family = "LM Roman 10"),
+        legend.position = "none",
+        plot.margin = margin(t = 0, r = 2.5, b = 2, l = 2.5, unit = "pt")) +
+  coord_flip()
+```
+
+\newpage
+
+Figure `@ref(fig:tweetshist)` displays the distribution of tweets over the observation period. As one might expect, in the weeks leading up to the election, candidates are most active on Twitter, culminating in the day of the election. After the election, activity plummets shortly across all parties until, in December, the coalition negotiations for the new cabinet between the SPD, Greens, and FDP again boost the discourse on Twitter. However, the distribution for tweets over time is fairly consistent, thereby demonstrating that no individual events (at least not those that have no relevance to the content) influence the analysis.
+
+```{r tweetshist, echo=FALSE, warning=FALSE, message=FALSE, fig.cap="Party-wise Frequency of Tweets Over Time", fig.pos="H", fig.align='left', out.width = "95%"}
+tweets %>%
+  mutate(party = case_when(
+    party == "LINKE" ~ "LEFT",
+    party == "GRÜNE" ~ "GREEN",
+    TRUE ~ as.character(party))) %>%
+  mutate(tweet_date = as.Date(tweet_date),
+         party = recode(party,
+                        "CDU" = "CDU/CSU",
+                        "CSU" = "CDU/CSU")) %>%
+  ggplot(aes(x = tweet_date, fill = party)) +
+  geom_histogram(bins = 100, color = "black", size = .05) +
+  scale_y_continuous(labels = function(x) paste0(x / 1000, "k")) +
+  scale_x_date(breaks = as.Date(c("2021-01-01", "2021-07-01", "2022-01-01", "2022-07-01")),
+               labels = c("2021/01", "2021/07", "2022/01", "2022/07"),
+               limits = as.Date(c("2020-09-26","2022-08-30"))) +
+  labs(x = "",
+       y = "") +
+  guides(fill = guide_legend(nrow = 1, title = NULL)) +
+  scale_fill_manual(values = c("LEFT" = "#BE3075",
+                               "GREEN" = "#1AA037",
+                               "SPD" = "#E3000F",
+                               "FDP" = "#FFEF00",
+                               "CDU/CSU" = "#000000",
+                               "AfD" = "#0489DB")) +
+  theme_bw() +
+  theme(axis.title.x =element_blank(),
+        axis.title.y =element_blank(),
+    text = element_text(family = "LM Roman 10"),
+        legend.position = "bottom",
+        plot.margin = margin(t = 0, r = 2.5, b = 0, l = 2.5, unit = "pt"),
+        axis.text.y = element_text(angle = 45, hjust = 1))
+```
+
+```{r tweetshistnote, echo=FALSE, warning=FALSE, message=FALSE, results='asis'}
+cat("\\vspace{-1cm}
+    \\begin{minipage}{\\linewidth}
+    \\begin{center}
+    \\scriptsize
+    \\textit{Note}: To improve readbility, CDU and CSU were grouped into one category.
+    \\end{center}
+    \\end{minipage}")
+```
+
+In general, Figure `@ref(fig:plottweetsamountybyparty)` and `@ref(fig:tweetshist)` show that the volume of the text corpora definitely validate the feasibility of a quantitative sentiment analysis, for which the scores are calculated in the next steps. 
+
+### Dependent Variable: Sentiment {#dv}
+To quantify the emotional tone expressed in each tweet, I employ the *sentiment dictionary for German political language* developed by Christian @rauhValidatingSentimentDictionary2018. The dictionary is comprised of lists of terms categorized as either positive or negative and has been validated specifically for German political speech. In total, the dictionary contains `r format(nrow(negative), big.mark = ",", scientific = FALSE)` negative and `r format(nrow(positive), big.mark = ",", scientific = FALSE)` positive words as well as all corresponding negations. To use the dictionary, I cleaned the text data by removing unnecessary elements such as punctuation, account-handles and emojis with the *quanteda* package [@benoitQuantedaPackageQuantitative2018]. Once cleaned, each tweet is analyzed for occurrences of positive and negative terms, drawn from the sentiment dictionary.
+In the next step, the raw sentiment score is derived by subtracting the total number of occurrences of negative terms from the total number of occurrences of positive terms as noted in the following formula:
+
+**Equation \@ref(eq:rawsentscore)**
+\begin{equation}
+\text{Raw Sentiment Score} = \sum (\text{Positive Terms}) - \sum (\text{Negative Terms})
+\tag{1} 
+\label{eq:rawsentscore}
+\end{equation}
+
+In order to control for varying tweet lengths, the raw sentiment score is standardized by dividing it by the total number of terms in each tweet.
+
+**Equation \@ref(eq:standsentscore)**
+\begin{equation}
+\text{Standardized Sentiment Score} = \frac{\text{Raw Sentiment Score}}{\text{Total Number of Terms in Tweet}}
+\tag{2} 
+\label{eq:standsentscore}
+\end{equation}
+
+The output of this standardization process is the score that will serve as the dependent variable in the analysis and ranges between -1 and +1. A score of -1 reflects a highly negative sentiment, whereas +1 signifies a strongly positive sentiment. In the Appendix, Figure `@ref(fig:examplescoring)` provides a demonstration of the scoring process for a single tweet, Table \ref{tab:sumstats} depicts the summary statistics for the sentiment variables and Figure `@ref(fig:sentimenthist)` displays the distribution of the normalized sentiment score.^[In section [*5 Robustness Checks*](#robustness), the scoring process of the dictionary will be reflected in detail.]
+
+### Independent Variables
+To test the hypotheses, I use multiple independent variables: (1) *Incumbent* is a binary variable indicating if the account is representing a candidate of the current government parties, (2) *Incumbent X Chancellor* is a binary variable indicating if the account is maintained by a candidate of the current chancellor's party, (3) *Radical Right* is a binary variable indicating if the account is maintained by a candidate of the AfD, (4) *Gender* is a binary variable indicating the candidate's gender, (5) *Weeks to Election* indicates the time to the election in weeks, (6) *Terms* indicates the total number of words in the tweet.
+
+## Methods
+
+### Model Specification
+
+To discern how sentiment in key German political accounts is influenced, I employ a series of Ordinary Least Squares (OLS) regression models. The independent variables are added in a step wise manner across six different models, increasing in complexity from model 1 to model 6. The simplest model tests the effect of incumbency without any other controls is noted by the following formula:
+
+**Equation \@ref(eq:regression)**
+\begin{equation}
+Y_{i} = \beta_{0} + \beta_{1} \cdot \text{Incumbent}_{i} + \epsilon_{i}
+\tag{3} 
+\label{eq:regression}
+\end{equation}
+
+where $Y_{i}$ represents the normalized sentiment score, $\beta_{0}$ is the intercept, $\beta_{1}$ denotes the incumbency coefficient, and $\epsilon_{i}$ is the error term. For all models this basic specification is the same, but based on the model $\beta_{n}$ are added depending on the independent variables used. To investigate whether the presumed effects persist even over the change of governing parties I run two separate regressions: for all tweets posted before (`@ref(tab:regone)`) and after the election day (`@ref(tab:regtwo)`). 

@@ -1,0 +1,7 @@
+# Abstract {-}
+
+Do candidates strategically use emotional language in campaigns? To address this question, I study the sentiment of candidates in the 2021 German federal election on Twitter.  When casting their votes, citizens critically evaluate the prevailing status quo and assess their satisfaction with the incumbent party's historical performance.  Recognizing this process, party officials and candidates seek to strategically shape voters' perceptions of the current state of affairs to their advantage.  They do so through the content and focus of their campaigns, as well as through the use of emotional appeals.  I find that incumbent candidates, especially those associated with the chancellor's party, exhibit more positive sentiment on Twitter compared to their opposition counterparts; female candidates tend to adopt a more neutral tone; and those associated with the radical right displace the most negative sentiment. With my findings, I contribute to the literature on campaign sentiment and quantitative text analysis.
+
+\begin{center}
+\textit{\textbf{Keywords} : electioneering, sentiment analysis, retrospective voting behavior, twitter} 
+\end{center}

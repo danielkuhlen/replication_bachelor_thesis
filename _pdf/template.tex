@@ -1,0 +1,265 @@
+% This is the HU Berlin LaTeX template, optimized for R Markdown.
+
+% -------------------------------
+% --- PREAMBLE ---
+% -------------------------------
+\documentclass[a4paper,11pt]{article}
+
+\usepackage{amsmath,amssymb,amsfonts,amsthm}    % Typical maths resource packages
+\usepackage{graphicx}                           % Packages to allow inclusion of graphics
+\usepackage[authoryear]{natbib}                 % literature reference style
+\usepackage[bf]{caption}
+\usepackage{textcomp}                           % For single quotes
+\usepackage{floatrow}                           % For image and table position
+\usepackage{booktabs}                           % For tables
+\usepackage{pdflscape}
+\usepackage{afterpage}
+% \usepackage[colorlinks=true]{hyperref}                           
+% \usepackage[bottom]{footmisc}                   
+\usepackage[bottom, flushmargin]{footmisc}                   % For footnotes
+\usepackage{xcolor}
+\definecolor{teal}{rgb}{0.0, 0.5, 0.5} % Define the teal color
+\usepackage[linkbordercolor=teal, citecolor=teal, urlbordercolor=teal]{hyperref}
+\usepackage{footnotebackref}
+\usepackage{tabularx}
+\newcolumntype{C}{>{\centering\arraybackslash}X}
+\newcolumntype{L}{>{\raggedright\arraybackslash}X}
+\usepackage{enumitem}
+
+% -------------------------------
+% --- some layout definitions ---
+% -------------------------------
+
+% define topline
+\usepackage[automark]{scrlayer-scrpage}
+\pagestyle{scrheadings}
+\automark{section}
+\clearscrheadings
+\ohead{\headmark}
+
+% define citation style
+\bibliographystyle{ecta}
+
+% define page size, margin size
+\setlength{\headheight}{1.1\baselineskip}
+\voffset=-2cm
+\hoffset=-3cm
+\textheight24cm
+\textwidth15.5cm
+\topmargin1cm
+\oddsidemargin3cm
+\evensidemargin3cm
+\setcounter{secnumdepth}{3}
+\setcounter{tocdepth}{3}   
+$if(space_between_paragraphs)$
+  \usepackage[parfill]{parskip} 
+$endif$
+
+% define line spacing = 1.5
+\renewcommand{\baselinestretch}{1.5}
+
+% define position of graphics
+\floatsetup[figure]{capposition=top, capbesideposition=left}
+\floatsetup[table]{capposition=top, capbesideposition=left}
+\floatplacement{figure}{h}
+\floatplacement{table}{ht}
+
+% save thesis parameters for later
+\newcommand{\thesistype}{$type$}
+\newcommand{\thesisauthor}{$author$}
+\newcommand{\thesisdate}{$date$}
+
+% define tightlist to work with newer versions of pandoc
+\providecommand{\tightlist}{%
+  \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+
+% change spacing
+\setlength {\parskip}{1em}
+
+% Additional LaTeX parameters added in the YAML header of index.Rmd
+$for(header-includes)$
+  $header-includes$
+$endfor$
+
+% Added code to define CSLReferences environment
+\usepackage{etoolbox}
+\newlength{\cslhangindent}
+\setlength{\cslhangindent}{1.5em}
+\newenvironment{CSLReferences}[2] % #1: entry spacing, #2: hanging-indent width
+ {\setlength{\cslhangindent}{#2\parindent}%
+  \setlength{\parindent}{0pt}%
+  \everypar{\setlength{\hangindent}{\cslhangindent}}\ignorespaces}
+ {\par}
+
+
+% --------------------------------------
+% --------------------------------------
+% --------------------------------------
+% --- the structure the tex document ---
+% ---  (this our recommendation) -------
+% frontmatter:
+%   - titlepage (mandatory),
+%   - acknowledgement,
+%   - abstract,
+%   - table of contents (mandatory),
+%   - list of abbreviations (not mandatory),
+%   - list of figures (not mandatory),
+%   - list of tables  (not mandatory) .
+%
+% body of the thesis (the structure of the thesis body is not mandatory, but the list of literature is mandatory):
+%   - introduction,
+%   - methods,
+%   - data,
+%   - results,
+%   - conclusion,
+%   - literature (mandatory),
+%   - appendix (figures, tables).
+%
+% last page:
+%   - declaration of authorship (mandatory).
+% --------------------------------------
+% --------------------------------------
+% --------------------------------------
+
+\begin{document}
+% -------------------------------
+% --- frontmatter: Title page ---
+% -------------------------------
+\thispagestyle{empty}
+\begin{center}
+  {\Large{\bf $title$}} \vspace{0.4cm}
+  \hrule \vspace{0.2cm}
+  {\Large{\bf $titlege$}} \\\vspace{0.5cm}  % <-- Added line break here
+  $type$ submitted \\\vspace{0.5cm}
+  to \\\vspace{0.5cm}
+  \textbf{$advisor1$} \\
+  \textbf{$advisor2$} \\\vspace{0.5cm}
+  $university$ \\
+  $institute$ \\
+  $chair$ \\
+  $if(chair2)$ $chair2$ \\ $endif$ \vspace{1cm}
+
+  \includegraphics[width=0.35\textwidth]{figures/hu_logo_small.png}
+  
+  by \\\vspace{0.5cm}
+  \textbf{$author$} \\
+  ($matriculation_number$) \\
+  
+  \medskip
+  \medskip
+  in partial fulfillment of the requirements \\
+  for the degree of \\
+  \textbf{$program$} \\\vspace{0.5cm}
+  $date$
+  
+\end{center}
+
+% ------------------------------------
+% --- frontmatter: Acknowledgement ---
+% ------------------------------------
+$if(acknowledge)$
+\newpage
+$acknowledge$
+$endif$
+\pagestyle{plain}
+\pagenumbering{roman}   % define page number in roman style
+\setcounter{page}{1}    % start page numbering
+
+% -----------------------------
+% --- frontmatter: Abstract ---
+% -----------------------------
+\newpage
+$abstract$
+
+% -----------------------------
+% --- frontmatter: Contents ---
+% -----------------------------
+\newpage
+\newenvironment{tocfont}{\small}{}
+\begin{tocfont}
+\tableofcontents
+\end{tocfont}
+\clearpage
+
+% ----------------------------------------------------------
+% --- frontmatter: List of Abbreviations (not mandatory) ---
+% ----------------------------------------------------------
+$if(abbreviations)$
+\newpage
+$abbreviations$
+$endif$
+
+% ----------------------------------------------------
+% --- frontmatter: List of Figures (not mandatory) ---
+% ----------------------------------------------------
+$if(lof)$
+\newpage
+\listoffigures
+\addcontentsline{toc}{section}{List of Figures}
+$endif$
+
+% ---------------------------------------------------
+% --- frontmatter: List of Tables (not mandatory) ---
+% ---------------------------------------------------
+$if(lot)$
+\newpage
+\listoftables
+\addcontentsline{toc}{section}{List of Tables}
+$endif$
+
+% -------------------------------
+% --- main body of the thesis ---
+% -------------------------------
+\newpage
+\pagestyle{plain}       
+\setcounter{page}{1}    % start page numbering anew
+\pagenumbering{arabic}  % page numbers in arabic style
+
+$body$
+
+% change rmd_files in `_bookdown.yml` files to determine order
+% note that references and appendix are also contained here.
+
+% --------------------------------------------
+% --- last page: Declaration of Authorship ---
+% --------------------------------------------
+
+\newpage
+\thispagestyle{empty}
+\hypertarget{declaration-of-authorship}{%
+\section*{Declaration of Authorship}\label{declaration-of-authorship}}
+\textit{English}
+\vspace{0.2cm}
+\\
+\noindent
+I hereby declare that my thesis is the result of my own work and that I have marked all sources, including online sources, which have been cited without changes or in modified form, especially sources of texts, graphics, tables and pictures. I assure that I have not submitted this thesis for any other examination yet.
+\vspace{0.5cm}
+\\
+\noindent
+I am aware that in case of any breach of these rules procedure concering fraud or attempted fraud wil be taken in accordance with the subject-specific examinition regulations and/or the Allgemeine Satzung für Studien- und Prüfungsangelegenheiten (ASSP) or the Allgemeine Satzung zur Regelung von Zulassung, Studium und Prüfung der Humboldt-Universität zu Berlin (ZSP-HU).
+\vspace{0.5cm}
+\\
+\noindent
+\textit{German}
+\vspace{0.2cm}
+\\
+\noindent
+\noindent Hiermit erkläre ich, dass ich die vorliegende Abschlussarbeit selbständing verfasst habe und sämtliche Quellen, einschließlich Internetquellen, die unverändert oder abgewandelt wiedergegeben werden, insbesondere Quellen für Texte, Grafiken, Tabellen und Bilder, als solche kenntliche gemacht habe.
+\vspace{0.5cm}
+\\
+\noindent
+Ich versichere, dass ich die vorliegende Abschlussarbeit noch nicht für andere Prüfungen eingereicht habe. Mir ist bekannt, dass bei Verstößen gegen diese Grundsätze ein Verfahren wegen Täuschungsversuch bzw. Täuschung gemäß der fachspezifischen Prüfungsordnung und/oder der Allgemeinen Satzung für Studien- und Prüfungsangelegenheiten (ASSP) bzw. der Fachübergreifenden Satzung zur Regelung von Zulassung, Studium und Prüfung der Humboldt-Universität zu Berlin (ZSP-HU) eingeleitet wird.
+
+\vspace{1cm}
+\noindent
+Berlin, \thesisdate{}
+\vspace{3cm}
+\\
+\noindent
+. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+\vspace{0.1cm}
+
+\thesisauthor{}
+
+
+\end{document}
